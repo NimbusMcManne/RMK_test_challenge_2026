@@ -61,6 +61,165 @@ class DataValidator:
         
         return ValidationResult(len(errors) == 0, errors, warnings)
     
+    def _convert_json_stat_to_dataframe(self, data: Dict) -> pd.DataFrame:
+        """
+        Convert JSON-STAT format (Estonia Statistics API) to DataFrame.
+        
+        Args:
+            data: JSON-STAT response data
+            
+        Returns:
+            DataFrame with the data
+        """
+        try:
+            variables = data.get('variables', [])
+            
+            # Check if we have actual data values (not just metadata)
+            if len(variables) == 0:
+                return pd.DataFrame()
+            
+            # Extract variable information
+            var_info = {}
+            for var in variables:
+                code = var.get('code', '')
+                values = var.get('values', [])
+                value_texts = var.get('valueTexts', [])
+                
+                if values and value_texts:
+                    # Create mapping from value codes to text labels
+                    var_info[code] = dict(zip(values, value_texts))
+                elif values:
+                    var_info[code] = values
+            
+            # If we only have metadata (no actual data values), create a summary DataFrame
+            if not var_info:
+                return pd.DataFrame()
+            
+            # Create a DataFrame with variable information
+            rows = []
+            max_length = max(len(vals) if isinstance(vals, list) else 0 for vals in var_info.values())
+            
+            if max_length == 0:
+                return pd.DataFrame()
+            
+            for i in range(max_length):
+                row = {}
+                for code, values in var_info.items():
+                    if isinstance(values, list) and i < len(values):
+                        row[code] = values[i]
+                    elif isinstance(values, dict):
+                        # For dict, we'll need actual data points to map
+                        pass
+                rows.append(row)
+            
+            df = pd.DataFrame(rows)
+            
+            # If DataFrame is empty, create a summary of available variables
+            if df.empty:
+                summary_data = []
+                for var in variables:
+                    summary_data.append({
+                        'variable_code': var.get('code', ''),
+                        'variable_text': var.get('text', ''),
+                        'num_values': len(var.get('values', [])),
+                        'sample_values': var.get('values', [])[:5]
+                    })
+                df = pd.DataFrame(summary_data)
+            
+            return df
+            
+        except Exception as e:
+            logger.error(f"Error converting JSON-STAT to DataFrame: {str(e)}")
+            return pd.DataFrame()
+    
+    def _convert_json_stat_with_data(self, data: Dict) -> pd.DataFrame:
+        """
+        Convert JSON-STAT format with actual data values to DataFrame.
+        
+        Args:
+            data: JSON-STAT response data with 'dimension' and 'value' keys
+            
+        Returns:
+            DataFrame with actual data
+        """
+        try:
+            dimensions = data.get('dimension', {})
+            values = data.get('value', [])
+            
+            if not values:
+                return pd.DataFrame()
+            
+            # Extract dimension information
+            dimension_info = {}
+            for dim_id, dim_data in dimensions.items():
+                if 'category' in dim_data:
+                    labels = dim_data['category'].get('label', {})
+                    indices = dim_data['category'].get('index', {})
+                    
+                    # Create mapping from index to label
+                    index_to_label = {}
+                    for code, idx in indices.items():
+                        if code in labels:
+                            index_to_label[idx] = labels[code]
+                    
+                    dimension_info[dim_id] = {
+                        'index_to_label': index_to_label,
+                        'size': len(indices)
+                    }
+            
+            # Get dimension sizes in order
+            dim_ids = list(dimensions.keys())
+            dim_sizes = [dimension_info[dim_id]['size'] for dim_id in dim_ids]
+            
+            # Calculate the stride for each dimension
+            strides = []
+            stride = 1
+            for size in reversed(dim_sizes[1:]):
+                strides.insert(0, stride)
+                stride *= size
+            strides.insert(0, stride)  # First dimension has stride 1
+            
+            # Create rows for each data point
+            rows = []
+            for i, value in enumerate(values):
+                if value is None:
+                    continue
+                
+                row = {'value': value}
+                
+                # Calculate the multi-dimensional indices for this data point
+                remaining = i
+                for j, dim_id in enumerate(dim_ids):
+                    dim_size = dim_sizes[j]
+                    stride = strides[j]
+                    dim_index = remaining // stride
+                    remaining = remaining % stride
+                    
+                    # Get the label for this dimension index
+                    index_to_label = dimension_info[dim_id]['index_to_label']
+                    if dim_index in index_to_label:
+                        row[dim_id] = index_to_label[dim_index]
+                    else:
+                        row[dim_id] = dim_index
+                
+                rows.append(row)
+            
+            if rows:
+                df = pd.DataFrame(rows)
+                return df
+            else:
+                # If we couldn't parse the complex structure, return a simple DataFrame
+                return pd.DataFrame({'value': values})
+                
+        except Exception as e:
+            logger.error(f"Error converting JSON-STAT with data to DataFrame: {str(e)}")
+            # Fallback: return simple DataFrame with values
+            try:
+                values = data.get('value', [])
+                return pd.DataFrame({'value': values})
+            except:
+                return pd.DataFrame()
+    
     def validate_dataframe_structure(self, df: pd.DataFrame) -> ValidationResult:
         """
         Validate DataFrame structure for statistical analysis.
@@ -126,8 +285,14 @@ class DataValidator:
                     return pd.DataFrame(), ValidationResult(False, errors, warnings)
             
             elif isinstance(data, dict):
+                # Handle JSON-STAT format (Estonia Statistics API)
+                if 'variables' in data and isinstance(data['variables'], list):
+                    df = self._convert_json_stat_to_dataframe(data)
+                elif 'dimension' in data and 'value' in data:
+                    # Handle full JSON-STAT response with actual data
+                    df = self._convert_json_stat_with_data(data)
                 # Try to find the main data array
-                if 'data' in data and isinstance(data['data'], list):
+                elif 'data' in data and isinstance(data['data'], list):
                     df = pd.DataFrame(data['data'])
                 elif 'results' in data and isinstance(data['results'], list):
                     df = pd.DataFrame(data['results'])
