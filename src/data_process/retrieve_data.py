@@ -394,10 +394,22 @@ def main():
         "https://statistika.tai.ee/api/v1/et/Andmebaas/02Haigestumus/05Psyyhikahaired/PKH7.px": {
             "query": [
                 {
+                "code": "Diagnoos (RHK-10)",
+                "selection": {
+                    "filter": "item",
+                    "values": [
+                    "F10.X-F19.X",
+                    "F10.X",
+                    "F12.X"
+                    ]
+                }
+                },
+                {
                 "code": "Kliiniline seisund",
                 "selection": {
                     "filter": "item",
                     "values": [
+                    "0",
                     "4"
                     ]
                 }
@@ -414,7 +426,7 @@ def main():
                 "selection": {
                     "filter": "item",
                     "values": [
-                    "0"
+                    "00"
                     ]
                 }
                 },
@@ -432,7 +444,7 @@ def main():
                 "selection": {
                     "filter": "item",
                     "values": [
-                    "V01-X59",
+                    "V01-Y34",
                     "V01-V99",
                     "V01-V09",
                     "V10-V19"
@@ -444,7 +456,19 @@ def main():
                 "selection": {
                     "filter": "item",
                     "values": [
-                    "0"
+                    "1",
+                    "2",
+                    "3",
+                    "4",
+                    "5",
+                    "6",
+                    "7",
+                    "8",
+                    "9",
+                    "10",
+                    "11",
+                    "12",
+                    "13"
                     ]
                 }
                 }
@@ -460,8 +484,8 @@ def main():
                 "selection": {
                     "filter": "item",
                     "values": [
-                    "1",
-                    "3"
+                    "0",
+                    "1"
                     ]
                 }
                 },
