@@ -1,5 +1,5 @@
 """
-CSV Converter for Estonia Statistics API Data
+CSV Converter for Statistics API Data
 
 This module converts DataFrames from different API formats into standardized CSV files
 that can be easily processed for probability analysis.

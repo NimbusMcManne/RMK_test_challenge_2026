@@ -28,6 +28,39 @@ def main():
         "https://andmed.stat.ee/api/v1/et/stat/RV262": {
             "query": [
                 {
+                "code": "Aasta",
+                "selection": {
+                    "filter": "item",
+                    "values": [
+                    "2000",
+                    "2001",
+                    "2002",
+                    "2003",
+                    "2004",
+                    "2005",
+                    "2006",
+                    "2007",
+                    "2008",
+                    "2009",
+                    "2010",
+                    "2011",
+                    "2012",
+                    "2013",
+                    "2014",
+                    "2015",
+                    "2016",
+                    "2017",
+                    "2018",
+                    "2019",
+                    "2020",
+                    "2021",
+                    "2022",
+                    "2023",
+                    "2024"
+                    ]
+                }
+                },
+                {
                 "code": "Abielu tüüp",
                 "selection": {
                     "filter": "item",
@@ -43,7 +76,6 @@ def main():
                 "selection": {
                     "filter": "item",
                     "values": [
-                    "1",
                     "2",
                     "3",
                     "4",
@@ -67,6 +99,39 @@ def main():
         "https://andmed.stat.ee/api/v1/et/stat/RV271": {
             "query": [
                 {
+                "code": "Aasta",
+                "selection": {
+                    "filter": "item",
+                    "values": [
+                    "2000",
+                    "2001",
+                    "2002",
+                    "2003",
+                    "2004",
+                    "2005",
+                    "2006",
+                    "2007",
+                    "2008",
+                    "2009",
+                    "2010",
+                    "2011",
+                    "2012",
+                    "2013",
+                    "2014",
+                    "2015",
+                    "2016",
+                    "2017",
+                    "2018",
+                    "2019",
+                    "2020",
+                    "2021",
+                    "2022",
+                    "2023",
+                    "2024"
+                    ]
+                }
+                },
+                {
                 "code": "Abielu tüüp",
                 "selection": {
                     "filter": "item",
@@ -82,7 +147,6 @@ def main():
                 "selection": {
                     "filter": "item",
                     "values": [
-                    "1",
                     "2",
                     "3",
                     "4",
@@ -95,8 +159,7 @@ def main():
                     "11",
                     "12",
                     "13",
-                    "14",
-                    "15"
+                    "14"
                     ]
                 }
                 }
@@ -112,8 +175,28 @@ def main():
                 "selection": {
                     "filter": "item",
                     "values": [
+                    "1",
+                    "3"
+                    ]
+                }
+                },
+                {
+                "code": "Kuu",
+                "selection": {
+                    "filter": "item",
+                    "values": [
+                    "1",
+                    "2",
                     "3",
-                    "4"
+                    "4",
+                    "5",
+                    "6",
+                    "7",
+                    "8",
+                    "9",
+                    "10",
+                    "11",
+                    "12"
                     ]
                 }
                 }
@@ -124,23 +207,6 @@ def main():
         }, 
         "https://andmed.stat.ee/api/v1/et/stat/PM09": {
             "query": [
-                {
-                "code": "Liik",
-                "selection": {
-                    "filter": "item",
-                    "values": [
-                    "ANIM2000",
-                    "ANIM2001EE",
-                    "ANIM2300",
-                    "ANIM2300F",
-                    "ANIM2130",
-                    "ANIM4100",
-                    "ANIM4200",
-                    "ANIM1100",
-                    "ANIM5110O"
-                    ]
-                }
-                },
                 {
                 "code": "Maakond",
                 "selection": {
@@ -284,9 +350,20 @@ def main():
                 "selection": {
                     "filter": "item",
                     "values": [
-                    "1",
                     "2",
-                    "3"
+                    "3",
+                    "4",
+                    "5",
+                    "6",
+                    "7",
+                    "8",
+                    "9",
+                    "10",
+                    "11",
+                    "12",
+                    "13",
+                    "14",
+                    "15"
                     ]
                 }
                 }
@@ -317,22 +394,11 @@ def main():
         "https://statistika.tai.ee/api/v1/et/Andmebaas/02Haigestumus/05Psyyhikahaired/PKH7.px": {
             "query": [
                 {
-                "code": "Diagnoos (RHK-10)",
-                "selection": {
-                    "filter": "item",
-                    "values": [
-                    "F10.X-F19.X",
-                    "F10.X",
-                    "F12.X"
-                    ]
-                }
-                },
-                {
                 "code": "Kliiniline seisund",
                 "selection": {
                     "filter": "item",
                     "values": [
-                    "0"
+                    "4"
                     ]
                 }
                 }
