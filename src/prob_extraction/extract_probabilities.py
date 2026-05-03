@@ -44,12 +44,6 @@ def calculate_category_probabilities(csv_file, category_column, value_column, ca
     total_denominator = denominator_data[value_column].sum()
 
     if total_denominator <= 0:
-<<<<<<< HEAD
-=======
-        # Fail loudly: a 0 denominator almost always means a filter doesn't
-        # match any rows (e.g. filtering on an index code when the CSV holds
-        # the expanded label). Silently returning 0 would hide this.
->>>>>>> 1d96c3491e3f82c12f827415d1ce2a15f6fb4c9a
         raise ValueError(
             f"Empty denominator for {csv_file} "
             f"(category_column={category_column!r}, "
@@ -147,11 +141,6 @@ def calculate_group_probabilities(csv_file, group_column, value_column, group_fi
 
 
 # Estonian -> English translation tables for dynamic group labels.
-<<<<<<< HEAD
-=======
-# The marriage and accident datasets return month/age-band labels in
-# Estonian; everything else on the chart is in English, so we translate.
->>>>>>> 1d96c3491e3f82c12f827415d1ce2a15f6fb4c9a
 ESTONIAN_MONTH_TO_EN = {
     'Jaanuar': 'January', 'Veebruar': 'February', 'Märts': 'March',
     'Aprill': 'April', 'Mai': 'May', 'Juuni': 'June', 'Juuli': 'July',
@@ -173,16 +162,6 @@ def extract_specific_probabilities():
     "<X> share of <Y>" so that the conditional / share-of nature is
     explicit -- these are *not* lifetime event probabilities.
 
-<<<<<<< HEAD
-=======
-    Note: the previous version included a 15th value derived from PM09
-    (livestock counts), but PM09 mixes leaf categories with hierarchical
-    aggregates (e.g. "Sead" includes the various Nuumsead subcategories),
-    so dividing by the sum across all `Liik` rows double-counts and
-    produces a meaningless near-zero result. Fixing this properly needs
-    the PM09 hierarchy metadata; until then the entry is omitted rather
-    than reported wrong.
->>>>>>> 1d96c3491e3f82c12f827415d1ce2a15f6fb4c9a
     """
     print("Extracting probabilities...")
 
@@ -306,12 +285,6 @@ def extract_specific_probabilities():
     return probabilities
 
 
-<<<<<<< HEAD
-=======
-# Backwards-compatible alias for any external callers still using the
-# old name. Yields 14 (not 15) probabilities; see extract_specific_probabilities
-# for the rationale.
->>>>>>> 1d96c3491e3f82c12f827415d1ce2a15f6fb4c9a
 extract_15_specific_probabilities = extract_specific_probabilities
 
 
