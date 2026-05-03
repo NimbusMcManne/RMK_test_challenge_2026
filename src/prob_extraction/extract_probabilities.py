@@ -3,12 +3,7 @@ Extract probabilities from multiple Estonian statistical datasets
 """
 
 import pandas as pd
-import sys
-from pathlib import Path
 
-# Add src directory to path for imports
-current_dir = Path(__file__).parent.parent / "src"
-sys.path.insert(0, str(current_dir))
 
 def calculate_category_probabilities(csv_file, category_column, value_column, category_filters, denominator_filter=None, additional_filters=None):
     """
@@ -47,18 +42,27 @@ def calculate_category_probabilities(csv_file, category_column, value_column, ca
         denominator_data = df
     
     total_denominator = denominator_data[value_column].sum()
-    
+
+    if total_denominator <= 0:
+        raise ValueError(
+            f"Empty denominator for {csv_file} "
+            f"(category_column={category_column!r}, "
+            f"denominator_filter={denominator_filter!r}, "
+            f"additional_filters={additional_filters!r}). "
+            "Check that your filter values match the CSV's actual labels."
+        )
+
     results = {}
-    
+
     # Calculate probabilities for each category
     for category_name, category_filter in category_filters.items():
         if callable(category_filter):
             category_data = df[df[category_column].apply(category_filter)]
         else:
             category_data = df[df[category_column] == category_filter]
-        
+
         category_total = category_data[value_column].sum()
-        probability = category_total / total_denominator if total_denominator > 0 else 0
+        probability = category_total / total_denominator
         
         # Store probability and category name for later use
         results[f'{category_name}_probability'] = probability
@@ -104,11 +108,19 @@ def calculate_group_probabilities(csv_file, group_column, value_column, group_fi
     # Group by the specified column
     group_totals = df.groupby(group_column)[value_column].sum()
     total_value = group_totals.sum()
-    
+
+    if total_value <= 0:
+        raise ValueError(
+            f"Empty group total for {csv_file} "
+            f"(group_column={group_column!r}, group_filters={group_filters!r}, "
+            f"additional_filters={additional_filters!r}). "
+            "Check that your filter values match the CSV's actual labels."
+        )
+
     # Calculate probabilities for each group
     group_probabilities = {}
     for group, total in group_totals.items():
-        probability = total / total_value if total_value > 0 else 0
+        probability = total / total_value
         group_probabilities[group] = probability
     
     # Find most and least likely groups
@@ -128,200 +140,153 @@ def calculate_group_probabilities(csv_file, group_column, value_column, group_fi
 
 
 
-def extract_15_specific_probabilities():
+# Estonian -> English translation tables for dynamic group labels.
+ESTONIAN_MONTH_TO_EN = {
+    'Jaanuar': 'January', 'Veebruar': 'February', 'Märts': 'March',
+    'Aprill': 'April', 'Mai': 'May', 'Juuni': 'June', 'Juuli': 'July',
+    'August': 'August', 'September': 'September', 'Oktoober': 'October',
+    'November': 'November', 'Detsember': 'December',
+}
+
+
+def _en_month(estonian_label):
+    return ESTONIAN_MONTH_TO_EN.get(estonian_label, estonian_label)
+
+
+def extract_specific_probabilities():
     """
-    Extract only the 15 specific probabilities requested using dynamic functions
-    Returns dictionary with exactly 15 probabilities as decimals (0-1)
+    Extract a curated set of 14 conditional probabilities (shares) from the
+    Estonian statistical CSVs in ./output/.
+
+    Each value is a fraction in [0, 1]. The labels are written as
+    "<X> share of <Y>" so that the conditional / share-of nature is
+    explicit -- these are *not* lifetime event probabilities.
+
     """
-    print("Extracting 15 specific probabilities...")
-    
-    # Initialize results dictionary
+    print("Extracting probabilities...")
+
     probabilities = {}
-    
-    # 1-2: KA10 Ocean Fishing Probabilities
+
+    # KA10 - Ocean fishing: shrimp / sardine share of total ocean catch (kg)
     ka10_probs = calculate_category_probabilities(
         'output/KA10.csv',
         category_column='Kalaliik',
         value_column='value',
-        category_filters={
-            'shrimp': 'Krevett',
-            'sardine': 'Sardiin'
-        },
-        denominator_filter='Kala kokku'
+        category_filters={'shrimp': 'Krevett', 'sardine': 'Sardiin'},
+        denominator_filter='Kala kokku',
     )
-    probabilities['Ocean Shrimp Catch Probability'] = ka10_probs['shrimp_probability']
-    probabilities['Ocean Sardine Catch Probabilty'] = ka10_probs['sardine_probability']
-    
-    # 3-4: KA30 Lake Peipsi Fishing Probabilities
+    probabilities['Shrimp share of EE ocean catch'] = ka10_probs['shrimp_probability']
+    probabilities['Sardine share of EE ocean catch'] = ka10_probs['sardine_probability']
+
+    # KA30 - Lake Peipsi: perch / pike share of Lake Peipsi catch
     ka30_probs = calculate_category_probabilities(
         'output/KA30.csv',
         category_column='Kalaliik',
         value_column='value',
-        category_filters={
-            'perch': 'Ahven',
-            'pike': 'Haug'
-        },
-        denominator_filter=None,  # Use all data as denominator
-        additional_filters={'Veekogu': 'Peipsi järv'}
+        category_filters={'perch': 'Ahven', 'pike': 'Haug'},
+        denominator_filter=None,
+        additional_filters={'Veekogu': 'Peipsi järv'},
     )
-    probabilities['Perch Probability in Lake Peipsi'] = ka30_probs['perch_probability']
-    probabilities['Pike Probability in Lake Peipsi'] = ka30_probs['pike_probability']
-    
-    # 5-6: PKH7 Mental Health Probabilities
+    probabilities['Perch share of L. Peipsi catch'] = ka30_probs['perch_probability']
+    probabilities['Pike share of L. Peipsi catch'] = ka30_probs['pike_probability']
+
+    # PKH7 - Mental health: alcohol / cannabinoid share of psychoactive
+    # substance disorder cases (ICD-10 F10-F19).
     pkh7_probs = calculate_category_probabilities(
         'output/PKH7.csv',
         category_column='Diagnoos (RHK-10)',
         value_column='value',
         category_filters={
             'cannabinoids': lambda x: 'Kannabinoididest' in str(x),
-            'alcohol': lambda x: 'Alkoholist' in str(x)
+            'alcohol': lambda x: 'Alkoholist' in str(x),
         },
-        denominator_filter=lambda x: 'Psühhoaktiivsete ainete' in str(x)
+        denominator_filter=lambda x: 'Psühhoaktiivsete ainete' in str(x),
     )
-    probabilities['Probability of Cannabinoid Disorders'] = pkh7_probs['cannabinoids_probability']
-    probabilities['Probability of Alcohol Disorders'] = pkh7_probs['alcohol_probability']
-    
-    # 7: PM09 Agricultural Probabilities - Find least bred animal
-    pm09_probs = calculate_group_probabilities(
-        'output/PM09.csv',
-        group_column='Liik',
-        value_column='value',
-        group_filters={'Maakond': 'Eesti'}
-    )
-    
-    # Find the animal with minimum probability (excluding zero values)
-    non_zero_probs = {k: v for k, v in pm09_probs['group_probabilities'].items() if v > 0}
-    if non_zero_probs:
-        least_bred_animal = min(non_zero_probs.items(), key=lambda x: x[1])
-        probabilities[f'Least Bred Animal: {least_bred_animal[0]}'] = least_bred_animal[1]
-    else:
-        probabilities['Least Bred Animal: None'] = 0.0
-    
-    # 8-9: RV262 Marriage Month Probabilities
+    probabilities['Cannabinoids share of F10-F19 cases'] = pkh7_probs['cannabinoids_probability']
+    probabilities['Alcohol share of F10-F19 cases'] = pkh7_probs['alcohol_probability']
+
+    # RV262 - Marriages by month: most/least common marriage month
     rv262_probs = calculate_group_probabilities(
         'output/RV262.csv',
         group_column='Abiellumiskuu',
         value_column='value',
-        group_filters={'Abielu tüüp': 'Abielusid kokku'}
+        group_filters={'Abielu tüüp': 'Abielusid kokku'},
     )
-    probabilities[f'Most Likely Marriage Month: {rv262_probs["most_likely_group"]}'] = rv262_probs['most_likely_probability']
-    probabilities[f'Least Likely Marriage Month: {rv262_probs["least_likely_group"]}'] = rv262_probs['least_likely_probability']
-    
-    # 10: RV271 Marriage Age Probabilities
+    probabilities[
+        f'{_en_month(rv262_probs["most_likely_group"])} share of all EE marriages'
+    ] = rv262_probs['most_likely_probability']
+    probabilities[
+        f'{_en_month(rv262_probs["least_likely_group"])} share of all EE marriages'
+    ] = rv262_probs['least_likely_probability']
+
+    # RV271 - Marriages by age band: most common bride/groom age band
     rv271_probs = calculate_group_probabilities(
         'output/RV271.csv',
         group_column='Vanuserühm',
         value_column='value',
-        group_filters={'Abielu tüüp': 'Abielusid kokku'}
+        group_filters={'Abielu tüüp': 'Abielusid kokku'},
     )
-    probabilities[f'Most Common Marriage Age: {rv271_probs["most_likely_group"]}'] = rv271_probs['most_likely_probability']
-    
-    # 11-12: TS093 Traffic Safety Probabilities
-    # Drunk drivers probability
+    probabilities[
+        f'Age {rv271_probs["most_likely_group"]} share of EE marriages'
+    ] = rv271_probs['most_likely_probability']
+
+    # TS093 - Traffic safety: share of accidents involving an intoxicated driver
     drunk_driver_probs = calculate_category_probabilities(
         'output/TS093.csv',
         category_column='Näitaja',
         value_column='value',
-        category_filters={
-            'drunk_drivers': 'Liiklusõnnetused joobes mootorsõidukijuhi osalusel'
-        },
-        denominator_filter='Liiklusõnnetused'
+        category_filters={'drunk_drivers': 'Liiklusõnnetused joobes mootorsõidukijuhi osalusel'},
+        denominator_filter='Liiklusõnnetused',
     )
-    probabilities['Share of Accidents Caused by Drunk Drivers'] = drunk_driver_probs['drunk_drivers_probability']
-    
-    # Peak accident month
+    probabilities['Drunk-driver share of EE road accidents'] = drunk_driver_probs['drunk_drivers_probability']
+
+    # TS093 - Peak accident month: share of yearly road accidents
     ts093_month_probs = calculate_group_probabilities(
         'output/TS093.csv',
         group_column='Kuu',
         value_column='value',
-        group_filters={'Näitaja': 'Liiklusõnnetused'}
+        group_filters={'Näitaja': 'Liiklusõnnetused'},
     )
-    probabilities[f'Peak Accident Month: {ts093_month_probs["most_likely_group"]}'] = ts093_month_probs['most_likely_probability']
-    
-    # 13-14: VIG10 Injury Causes Probabilities
+    probabilities[
+        f'{_en_month(ts093_month_probs["most_likely_group"])} share of yearly road accidents'
+    ] = ts093_month_probs['most_likely_probability']
+
+    # VIG10 - Vehicle-accident injury type: pedestrian / cyclist share
     vig10_probs = calculate_category_probabilities(
         'output/VIG10.csv',
         category_column='Välispõhjus (RHK-10)',
         value_column='value',
         category_filters={
             'pedestrian': '....Sõidukiõnnetuses vigastatud jalakäija (V01-V09)',
-            'cyclist': '....Sõidukiõnnetuses vigastatud jalgrattur (V10-V19)'
+            'cyclist': '....Sõidukiõnnetuses vigastatud jalgrattur (V10-V19)',
         },
         denominator_filter='..Sõidukiõnnetused (V01-V99)',
-        additional_filters={'Elukoht': '00'}
+        additional_filters={'Elukoht': 'Eesti'},
     )
-    probabilities['Share of Pedestrian Injuries From All Types of Injuries'] = vig10_probs['pedestrian_probability']
-    probabilities['Share of Cyclist Injuries From All Types of Injuries'] = vig10_probs['cyclist_probability']
-    
-    # 15: KE32 Emergency Medical Probabilities
+    probabilities['Pedestrian share of vehicle-accident injuries'] = vig10_probs['pedestrian_probability']
+    probabilities['Cyclist share of vehicle-accident injuries'] = vig10_probs['cyclist_probability']
+
+    # KE32 - Emergency care: share of ER patients arriving by ambulance
     ke32_probs = calculate_category_probabilities(
         'output/KE32.csv',
         category_column='Saabumisviis',
         value_column='value',
-        category_filters={
-            'ambulance': 'Toodi kiirabiga'
-        },
-        denominator_filter='Erakorralisi patsiente kokku'
+        category_filters={'ambulance': 'Toodi kiirabiga'},
+        denominator_filter='Erakorralisi patsiente kokku',
     )
-    probabilities['Likelyhood of Ambulance Transporting to Hospital'] = ke32_probs['ambulance_probability']
-    
-    # Sort probabilities by value (descending)
+    probabilities['Ambulance share of EE ER arrivals'] = ke32_probs['ambulance_probability']
+
     sorted_probabilities = dict(sorted(probabilities.items(), key=lambda x: x[1], reverse=True))
-    
-    print("\n=== 15 Specific Probabilities (Descending) ===")
+
+    print(f"\n=== {len(sorted_probabilities)} Probabilities (descending) ===")
     for key, value in sorted_probabilities.items():
-        print(f"{key}: {value:.4f}")
-    
+        print(f"  {key}: {value:.4f}")
+
     return probabilities
 
 
-def create_pie_chart(probabilities_dict, figsize=(12, 8)):
-    """
-    Create a pie chart visualization of all probabilities
-    """
-    import matplotlib.pyplot as plt
-    import numpy as np
-    
-    # Filter only float values and sort by value (descending)
-    float_probabilities = {k: v for k, v in probabilities_dict.items() if isinstance(v, float)}
-    sorted_probs = dict(sorted(float_probabilities.items(), key=lambda x: x[1], reverse=True))
-    
-    # Create figure
-    fig, ax = plt.subplots(figsize=figsize)
-    
-    # Prepare data for pie chart
-    labels = list(sorted_probs.keys())
-    sizes = list(sorted_probs.values())
-    
-    # Create color scheme - use a gradient from red (high) to blue (low)
-    colors = plt.cm.RdYlBu_r(np.linspace(0, 1, len(sizes)))
-    
-    # Create pie chart
-    wedges, texts, autotexts = ax.pie(sizes, labels=None, colors=colors, autopct='%1.2f%%',
-                                      startangle=90, textprops={'fontsize': 8})
-    
-    # Customize the chart
-    ax.set_title('15 Estonian Statistical Probabilities Distribution', 
-                fontsize=14, fontweight='bold', pad=20)
-    
-    # Create legend with shortened labels for better readability
-    legend_labels = []
-    for label in labels:
-        # Shorten labels for legend
-        if len(label) > 30:
-            shortened = label[:27] + "..."
-        else:
-            shortened = label
-        legend_labels.append(f"{shortened}: {sorted_probs[label]:.4f}")
-    
-    ax.legend(wedges, legend_labels, title="Probabilities", loc="center left", 
-             bbox_to_anchor=(1, 0, 0.5, 1), fontsize=8)
-    
-    # Make the pie chart circular
-    ax.axis('equal')
-    
-    plt.tight_layout()
-    return fig, ax
+extract_15_specific_probabilities = extract_specific_probabilities
+
 
 def visualize_probabilities(probabilities_dict, figsize=(16, 10)):
     """
@@ -406,8 +371,11 @@ def visualize_probabilities(probabilities_dict, figsize=(16, 10)):
     # Set up the plot
     ax.set_xlim(-0.05, 1.05)
     ax.set_ylim(-0.40, 0.40)
-    ax.set_xlabel('Probability (Nonlinear Scale: More Precision at Low Values)', fontsize=12, fontweight='bold')
-    ax.set_title('15 Estonian Statistical Probabilities (Nonlinear Scale)', fontsize=14, fontweight='bold', pad=20)
+    ax.set_xlabel('Probability (sqrt scale -- more resolution at low values)', fontsize=12, fontweight='bold')
+    ax.set_title(
+        f'{len(sorted_probs)} conditional probabilities from Estonian statistics',
+        fontsize=14, fontweight='bold', pad=20,
+    )
     
     # Remove y-axis as it's not meaningful
     ax.set_yticks([])
@@ -423,29 +391,13 @@ def visualize_probabilities(probabilities_dict, figsize=(16, 10)):
     return fig, ax
 
 if __name__ == "__main__":
-    # Extract only the 15 specific probabilities requested
-    results = extract_15_specific_probabilities()
-    
-    # Create horizontal scale visualization for the 15 probabilities
-    fig1, ax1 = visualize_probabilities(results)
-    
-    # Create pie chart visualization for the 15 probabilities
-    fig2, ax2 = create_pie_chart(results)
-    
-    # Create images folder if it doesn't exist
     import os
-    os.makedirs('images', exist_ok=True)
-    
-    # Save both plots to images folder
     import matplotlib.pyplot as plt
-    plt.figure(fig1.number)
-    plt.savefig('images/15_probabilities_horizontal_scale.png', dpi=300, bbox_inches='tight')
-    
-    plt.figure(fig2.number)
-    plt.savefig('images/15_probabilities_pie_chart.png', dpi=300, bbox_inches='tight')
-    
-    plt.show()
-    
-    print("\nVisualizations saved to images folder:")
-    print("- 'images/15_probabilities_horizontal_scale.png' (Nonlinear scale)")
-    print("- 'images/15_probabilities_pie_chart.png' (Pie chart distribution)")
+
+    results = extract_specific_probabilities()
+    fig, _ = visualize_probabilities(results)
+
+    os.makedirs('images', exist_ok=True)
+    out_path = 'images/probabilities_horizontal_scale.png'
+    fig.savefig(out_path, dpi=300, bbox_inches='tight')
+    print(f"\nVisualization saved to {out_path}")

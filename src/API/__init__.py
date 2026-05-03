@@ -1,8 +1,6 @@
 """
-RMK Test Challenge 2026 - Data Analysis Package
-
-This package provides tools for API data retrieval and statistical analysis
-including probability, correlations, and effect sizes.
+HTTP client and JSON-STAT2 conversion utilities for the
+Statistics Estonia (andmed.stat.ee) and TAI (statistika.tai.ee) APIs.
 """
 
 from .api_client import APIClient, APIResponse, create_api_client

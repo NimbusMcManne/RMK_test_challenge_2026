@@ -1,188 +1,156 @@
-# RMK Estonian Statistical Data Analysis
+# Estonian Probability Scale
 
-A comprehensive data analysis pipeline for extracting and visualizing key probabilities from Estonian statistical datasets. This project was developed as a test challenge for RMK data team internship.
+A small data pipeline that pulls a curated set of Estonian government
+statistics, computes conditional probabilities (shares) from them, and
+renders them on a single non-linear horizontal scale -- so a reader can
+see how 0.0076 ("cannabinoids share of F10-F19 disorders") and 0.6586
+("alcohol share of F10-F19 disorders") sit relative to each other on a
+0-1 axis.
 
-## Overview
+Submitted as the RMK 2026 data team internship test challenge. The
+challenge brief is at
+<https://github.com/rmk-internship/2026/blob/main/test/test_challenge.md>.
 
-This pipeline analyzes 9 different Estonian statistical datasets to extract 15 key probabilities, then visualizes them using both nonlinear horizontal scale and pie chart visualizations. The analysis covers diverse domains including fishing, health, agriculture, marriage patterns, traffic safety, and emergency medical services.
+## Data sources
 
-### 📊 Key Features
+Data is fetched at runtime via the public JSON-STAT2 APIs of:
 
-- **Automated Data Retrieval**: Fetches data from RMK API
-- **Dynamic Probability Calculation**: Uses flexible, reusable functions for probability extraction
-- **Dual Visualization**: Horizontal scale with nonlinear transformation + pie chart distribution
-- **Comprehensive Analysis**: 15 specific probabilities across 9 datasets
-- **Clean Architecture**: Streamlined codebase with minimal duplication
+- **Statistics Estonia** -- `andmed.stat.ee/api/v1/et/stat`
+  (datasets `KA10`, `KA30`, `PM09`, `RV262`, `RV271`, `TS093`)
+- **National Institute for Health Development (TAI)** --
+  `statistika.tai.ee/api/v1/et/Andmebaas`
+  (datasets `PKH7`, `VIG10`, `KE32`)
 
-## 🚀 Quick Start
+Neither API requires authentication. The exact query payloads (filtered
+to the dimensions actually used) live inline in
+`src/data_process/retrieve_data.py`.
 
-### Prerequisites
+> Note: this project is *for* the RMK internship, but RMK
+> (Riigimetsa Majandamise Keskus) does not host these APIs -- the data
+> comes from Statistics Estonia and TAI.
 
-- Python 3.8 or higher
-- Required packages (install via requirements.txt):
-  ```bash
-  pip install -r requirements.txt
-  ```
-
-### Running the Complete Pipeline
-
-Execute the entire process from data retrieval to visualization:
+## Quick start
 
 ```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
 python main.py
 ```
 
-This single command will:
-1. Retrieve data from RMK API
-2. Process and clean the data
-3. Extract 15 key probabilities
-4. Generate visualizations
-5. Display results summary
-6. Show interactive plots
+`main.py`:
 
-### Generated Files
+1. Pulls the 9 datasets from the APIs and writes them as standardised
+   CSVs to `./output/`.
+2. Computes the 14 probabilities listed below.
+3. Saves the chart to `./images/probabilities_horizontal_scale.png`.
 
-After running the pipeline, you'll find:
+Both `output/` and `images/` are gitignored; running the pipeline
+regenerates them.
 
-- **`output/`** - CSV files retrieved from RMK API
-- **`images/15_probabilities_horizontal_scale.png`** - Nonlinear scale visualization
-- **`images/15_probabilities_pie_chart.png`** - Pie chart distribution
+## What is computed
 
-## 📈 Analyzed Probabilities
+| # | Label                                              | What the denominator is                          |
+|---|----------------------------------------------------|--------------------------------------------------|
+| 1 | Shrimp share of EE ocean catch                     | All-species ocean catch, kg, all years           |
+| 2 | Sardine share of EE ocean catch                    | All-species ocean catch, kg, all years           |
+| 3 | Perch share of L. Peipsi catch                     | Lake Peipsi catch, kg, all years                 |
+| 4 | Pike share of L. Peipsi catch                      | Lake Peipsi catch, kg, all years                 |
+| 5 | Cannabinoids share of F10-F19 cases                | Psychoactive substance disorder cases (F10-F19)  |
+| 6 | Alcohol share of F10-F19 cases                     | Psychoactive substance disorder cases (F10-F19)  |
+| 7 | July share of all EE marriages                     | All marriages, all years (peak month)            |
+| 8 | January share of all EE marriages                  | All marriages, all years (lowest month)          |
+| 9 | Age 25-29 share of EE marriages                    | All marriages, all years (peak age band)         |
+| 10| Drunk-driver share of EE road accidents            | All road accidents, all years                    |
+| 11| August share of yearly road accidents              | All road accidents, all years (peak month)       |
+| 12| Pedestrian share of vehicle-accident injuries      | Vehicle-accident injuries, V01-V99               |
+| 13| Cyclist share of vehicle-accident injuries         | Vehicle-accident injuries, V01-V99               |
+| 14| Ambulance share of EE ER arrivals                  | All emergency-medical patients                   |
 
-The pipeline extracts and analyzes these 15 key probabilities:
+## Methodology and caveats
 
-### 🐟 Fishing & Agriculture
-1. **Ocean Shrimp Catch Probability** - Share of shrimp in total ocean fishing
-2. **Ocean Sardine Catch Probability** - Share of sardine in total ocean fishing
-3. **Perch Probability in Lake Peipsi** - Probability of catching perch in Lake Peipsi
-4. **Pike Probability in Lake Peipsi** - Probability of catching pike in Lake Peipsi
-5. **Least Bred Animal** - The least commonly bred animal in Estonia
+A few things a reviewer should know up front:
 
-### 🏥 Health & Mental Health
-6. **Probability of Cannabinoid Disorders** - Share of cannabinoid-related mental health disorders
-7. **Probability of Alcohol Disorders** - Share of alcohol-related mental health disorders
+- **These are not lifetime event probabilities.** The challenge brief
+  motivates the scale with examples like "P(throwing 4 heads in a row) =
+  0.06". Most public Estonian data is *categorical* rather than
+  *event-frequency*, so what's plotted here is conditional shares -- "of
+  all road accidents in EE, fraction involving an intoxicated driver",
+  not "if you drive in EE today, what's P(accident)". The labels are
+  written as "X share of Y" specifically to keep that distinction
+  obvious.
 
-### 💑 Marriage Patterns
-8. **Most Likely Marriage Month** - Month with highest marriage probability
-9. **Least Likely Marriage Month** - Month with lowest marriage probability
-10. **Most Common Marriage Age** - Age group with highest marriage probability
+- **Aggregation is across all years in each dataset**, not
+  per-year-then-averaged. The denominator is the absolute total for the
+  fetched window. This is the simplest unbiased estimate; it ignores
+  inter-year variation, which is fine for an intuition-building scale.
 
-### 🚗 Traffic & Safety
-11. **Share of Accidents Caused by Drunk Drivers** - Proportion of accidents involving drunk drivers
-12. **Peak Accident Month** - Month with most traffic accidents
+- **PM09 (livestock counts) was deliberately excluded.** That dataset
+  mixes leaf categories ("Piimauted") with hierarchical aggregates
+  ("Lambad", "Sead", "Veised"), so naively dividing each `Liik` row by
+  the sum across all `Liik` rows double-counts and produces a
+  meaningless near-zero result. Fixing this properly needs the PM09
+  taxonomy metadata, which would be a follow-up.
 
-### 🚑 Emergency Services
-13. **Share of Pedestrian Injuries** - Proportion of pedestrian injuries in traffic accidents
-14. **Share of Cyclist Injuries** - Proportion of cyclist injuries in traffic accidents
-15. **Likelihood of Ambulance Transport** - Probability of ambulance transport to hospital
+- **A pie chart was deliberately not produced.** The 14 values come
+  from 9 unrelated datasets with no common denominator, so showing them
+  as slices of a single whole would imply a relationship that isn't
+  there.
 
-## 🏗️ Project Structure
+- **The horizontal scale uses a sqrt transform** (more resolution at
+  low p, less at high p). This is debatable for a probability scale --
+  a log axis would be more standard -- but at the magnitudes seen here
+  (~0.01 .. 0.66) the sqrt stretch gives readable separation at the
+  low end without compressing the high end into the right wall.
+
+## What I'd do with more time
+
+Bullet-list of things knowingly skipped, in rough priority order. The
+challenge brief explicitly invites describing the proposed-but-not-built
+parts of the solution.
+
+- **Switch to a log-base-10 axis** with grid lines at 10^-3, 10^-2,
+  10^-1, 1, and add reference points from the brief's example image
+  ("0.0019 = born with 11 fingers", "0.06 = four heads in a row") so
+  domain-conditional shares can be visually compared against intuitive
+  lifetime probabilities.
+- **Add genuine event-frequency probabilities**, e.g. P(snow before
+  October 1 in Tallinn | year) from Estonian weather records, P(any
+  given EE driver in an accident in a year) by joining accident counts
+  with the licensed-driver census. These would belong on the scale next
+  to the conditional shares with a different marker shape.
+- **Bayesian update example**: take one of the conditional shares,
+  e.g. "P(disorder is alcohol | psychoactive-substance disorder)", and
+  compute the unconditional P(alcohol disorder | adult EE resident)
+  using TAI prevalence data, demonstrating P(B|A) -> P(A|B) explicitly.
+- **Move the inline query payloads** out of `retrieve_data.py` and into
+  one JSON file per dataset under `data/queries/`. The current 580-line
+  file is mostly literal JSON.
+- **Resolve the PM09 hierarchy** so the livestock entry can be added
+  correctly.
+
+## Project structure
 
 ```
-RMK_test_challenge_2026/
-├── main.py                          # Main pipeline script
-├── requirements.txt                 # Python dependencies
-├── src/                             # Source code
-│   ├── data_process/                # Data retrieval and processing
-│   │   └── retrieve_data.py        # RMK API data retrieval
-│   └── prob_extraction/             # Probability extraction
-│       └── extract_probabilities.py # Dynamic probability calculations
-├── output/                          # Retrieved CSV data (gitignored)
-├── images/                          # Generated visualizations (gitignored)
-└── README.md                        # This file
+.
+├── main.py                              # Pipeline entry point
+├── requirements.txt
+├── LICENSE
+├── README.md
+└── src/
+    ├── API/
+    │   ├── api_client.py                # HTTP client w/ retry & rate-limit
+    │   └── data_validator.py            # JSON-STAT -> DataFrame conversion
+    ├── data_process/
+    │   ├── data_request.py              # Multi-dataset orchestrator
+    │   ├── csv_converter.py             # DataFrame -> standardised CSV
+    │   └── retrieve_data.py             # Query payloads + pipeline glue
+    └── prob_extraction/
+        └── extract_probabilities.py     # Probabilities + horizontal scale
 ```
 
-## 🔧 Technical Details
+`output/` (raw CSVs) and `images/` (rendered chart) are created by
+`main.py` and are gitignored.
 
-### Dynamic Probability Functions
+## License
 
-The project uses two main dynamic functions that replace 9 individual dataset-specific functions:
-
-1. **`calculate_category_probabilities()`** - For category-based probability calculations
-2. **`calculate_group_probabilities()`** - For group-based probability calculations
-
-This approach reduces code duplication by 90% while maintaining full functionality.
-
-### Visualization Features
-
-- **Nonlinear Horizontal Scale**: Square root transformation for better low-value precision
-- **Pie Chart Distribution**: Color-coded gradient from red (high) to blue (low)
-- **Professional Labeling**: All labels include specific names (months, animals, age groups)
-- **Enhanced Readability**: Alternating label positions and vertical separation
-
-### Data Sources
-
-All data is retrieved from official RMK (Estonian Statistics Office) APIs:
-- KA10: Ocean fishing statistics
-- KA30: Lake fishing statistics  
-- PKH7: Mental health disorder statistics
-- PM09: Agricultural statistics
-- RV262: Marriage month statistics
-- RV271: Marriage age statistics
-- TS093: Traffic safety statistics
-- VIG10: Injury cause statistics
-- KE32: Emergency medical statistics
-
-## 📊 Results Interpretation
-
-### Horizontal Scale Visualization
-- **Left side (0)**: Least probable events with enhanced precision
-- **Right side (1)**: Most probable events
-- **Nonlinear transformation**: Better separation for clustered low values
-
-### Pie Chart Visualization
-- **Slice size**: Represents relative probability magnitude
-- **Color gradient**: Red (highest) → Yellow → Blue (lowest)
-- **Legend**: Shows exact probabilities with shortened labels
-
-## 🛠️ Development Notes
-
-### Architecture Benefits
-- **Maintainable**: Only 2 core functions for all probability calculations
-- **Extensible**: Easy to add new probability analyses
-- **Testable**: Clear separation of concerns
-- **Documented**: Comprehensive inline documentation
-
-### Probability Calculation Method
-All probabilities are calculated as **overall aggregates across all years** in each dataset, not as single-year averages or means of yearly probabilities. This provides the most accurate representation of long-term patterns.
-
-## 📝 Usage Examples
-
-### Basic Usage
-```bash
-# Run complete pipeline
-python main.py
-```
-
-### Custom Analysis
-```python
-# Import specific functions for custom analysis
-from src.prob_extraction.extract_probabilities import extract_15_specific_probabilities
-
-# Get probabilities
-results = extract_15_specific_probabilities()
-
-# Access specific probability
-alcohol_disorder_prob = results['Probability of Alcohol Disorders']
-print(f"Alcohol disorder probability: {alcohol_disorder_prob:.4f}")
-```
-
-## 🤝 Contributing
-
-This project was developed as part of RMK's data team internship challenge. The codebase demonstrates:
-
-- Clean, maintainable architecture
-- Effective data processing pipelines
-- Dynamic, reusable functions
-- Professional visualization techniques
-- Comprehensive documentation
-
-## 📄 License
-
-This project is open source and available under the terms specified in the LICENSE file.
-
----
-
-**RMK Data Team Internship Challenge**  
-*Demonstrating expertise in data analysis, visualization, and software engineering*
+MIT. See `LICENSE`.
